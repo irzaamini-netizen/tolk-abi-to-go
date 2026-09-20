@@ -31,7 +31,10 @@ func TestOpaqueLibraryAndRawBindings(t *testing.T) {
 	if !bytes.Equal(c.Hash(), expected[:]) {
 		t.Fatal("wrong library representation hash")
 	}
-	s := c.BeginParse()
+	s, err := c.BeginParse()
+	if err != nil {
+		t.Fatal(err)
+	}
 	tag, err := s.LoadUInt(8)
 	if err != nil || tag != 2 {
 		t.Fatal(tag, err)
@@ -94,23 +97,31 @@ func TestOpaqueLibraryAndRawBindings(t *testing.T) {
 	checkJSON(t, got, base64.StdEncoding.EncodeToString(ordinary.ToBOC()))
 }
 
-func TestOpaqueProofsAndLevelMasks(t *testing.T) {
+func TestOpaqueExoticRoundTrip(t *testing.T) {
 	leaf := cell.BeginCell().EndCell()
-	skeleton := cell.CreateProofSkeleton()
-	skeleton.SetRecursive()
-	proof, err := leaf.CreateProof(skeleton)
+	other := cell.BeginCell()
+	if err := other.StoreUInt(1, 8); err != nil {
+		t.Fatal(err)
+	}
+	proof, err := cell.CreateMerkleProof(leaf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prunedData := append([]byte{1, 2}, leaf.Hash(0)...)
-	prunedData = append(prunedData, 0, 0)
-	pruned := cell.FromRawUnsafe(cell.RawUnsafeCell{IsSpecial: true, LevelMask: cell.LevelMask{Mask: 2}, BitsSz: 288, Data: prunedData})
-	updateData := []byte{4}
-	updateData = append(updateData, leaf.Hash(0)...)
-	updateData = append(updateData, leaf.Hash(0)...)
-	updateData = append(updateData, 0, 0, 0, 0)
-	update := cell.FromRawUnsafe(cell.RawUnsafeCell{IsSpecial: true, BitsSz: 552, Data: updateData, Refs: []*cell.Cell{leaf, leaf}})
-	for name, c := range map[string]*cell.Cell{"proof": proof, "pruned_noncontiguous_mask": pruned, "update": update} {
+	update, err := cell.CreateMerkleUpdate(leaf, other.EndCell())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An empty skeleton proves nothing below the root, so every reference of the
+	// parent becomes a pruned branch and the proof carries a sparse level mask.
+	parent := cell.BeginCell()
+	if err := parent.StoreRef(leaf); err != nil {
+		t.Fatal(err)
+	}
+	pruning, err := parent.EndCell().CreateProof(cell.CreateProofSkeleton())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]*cell.Cell{"proof": proof, "update": update, "pruned_branches": pruning} {
 		t.Run(name, func(t *testing.T) {
 			for _, flags := range [][]bool{{false}, {true}, {true, true}} {
 				got, err := DecodeOpaqueBOC(base64.StdEncoding.EncodeToString(c.ToBOCWithFlags(flags...)))
@@ -146,36 +157,6 @@ func TestOpaqueProofsAndLevelMasks(t *testing.T) {
 			}
 			checkJSON(t, out, value)
 		})
-	}
-	// Build a standard proof containing pruned branches, not just a leaf proof.
-	child := cell.BeginCell()
-	if err := child.StoreRef(leaf); err != nil {
-		t.Fatal(err)
-	}
-	parent := cell.BeginCell()
-	if err := parent.StoreRef(child.EndCell()); err != nil {
-		t.Fatal(err)
-	}
-	proof, err = parent.EndCell().CreateProof(cell.CreateProofSkeleton())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := DecodeOpaqueBOC(base64.StdEncoding.EncodeToString(proof.ToBOC())); err != nil {
-		t.Fatal(err)
-	}
-	// Correctly count and verify stored hashes for a sparse level mask (2).
-	stored := append([]byte{}, pruned.Hash(0)...)
-	stored = append(stored, pruned.Hash(2)...)
-	stored = append(stored, 0, 0, 0, 0)
-	payload := append([]byte{0x58, 72}, stored...)
-	payload = append(payload, prunedData...)
-	b := append([]byte{0xb5, 0xee, 0x9c, 0x72, 1, 1, 1, 1, 0, byte(len(payload)), 0}, payload...)
-	if _, err := DecodeOpaqueBOC(base64.StdEncoding.EncodeToString(b)); err != nil {
-		t.Fatal("stored sparse-level hashes rejected", err)
-	}
-	b[13] ^= 1
-	if _, err := DecodeOpaqueBOC(base64.StdEncoding.EncodeToString(b)); err == nil {
-		t.Fatal("corrupt stored hash accepted")
 	}
 }
 

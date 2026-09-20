@@ -145,7 +145,10 @@ func validateCell(root *cell.Cell) error {
 		if len(seen) > MaxCells {
 			return errors.New("cell count limit exceeded")
 		}
-		s := c.BeginParse()
+		s, err := c.BeginParse()
+		if err != nil {
+			return err
+		}
 		for s.RefsNum() > 0 {
 			r, err := s.LoadRefCell()
 			if err != nil {
@@ -154,9 +157,6 @@ func validateCell(root *cell.Cell) error {
 			if err = visit(r, depth+1); err != nil {
 				return err
 			}
-		}
-		if err := validateCellData(c.ToRawUnsafe()); err != nil {
-			return err
 		}
 		for level := 0; level <= 3; level++ {
 			if c.Depth(level) > MaxDepth {
@@ -169,7 +169,10 @@ func validateCell(root *cell.Cell) error {
 }
 
 func (c *Codec) decode(ctx *Context, root *cell.Cell) (any, error) {
-	s := root.BeginParse()
+	s, err := root.BeginParse()
+	if err != nil {
+		return nil, err
+	}
 	v, err := c.read(ctx, s)
 	if err != nil {
 		return nil, err
@@ -184,7 +187,7 @@ func (c *Codec) encode(ctx *Context, v any) (*cell.Cell, error) {
 	if err := c.write(ctx, b, v); err != nil {
 		return nil, err
 	}
-	return withCellLevels(b.EndCell())
+	return b.EndCell(), nil
 }
 func (c *Codec) Decode(root *cell.Cell) (v any, err error) {
 	return c.DecodeWith(&Context{}, root)

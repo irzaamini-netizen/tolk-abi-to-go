@@ -25,23 +25,6 @@ func integerRange(x *big.Int, n int, signed bool) error {
 	return nil
 }
 
-// Store signed values via two's-complement bits: tonutils 1.15.5 StoreBigInt
-// mutates negative inputs and rejects the valid int257 minimum (-2^256).
-func storeInteger(b *cell.Builder, x *big.Int, n int, signed bool) error {
-	if err := integerRange(x, n, signed); err != nil {
-		return err
-	}
-	u := new(big.Int).Set(x)
-	if u.Sign() < 0 {
-		u.Add(u, new(big.Int).Lsh(big.NewInt(1), uint(n)))
-	}
-	pad := (8 - n%8) % 8
-	u.Lsh(u, uint(pad))
-	data := make([]byte, (n+7)/8)
-	u.FillBytes(data)
-	return b.StoreSlice(data, uint(n))
-}
-
 // IntegerCodec uses n=0 for the getter-only Tolk int type. Variable n is
 // the VarInteger bound (16 or 32), not the number of length-prefix bits.
 func IntegerCodec(n int, signed, variable bool) Codec {
@@ -124,7 +107,10 @@ func IntegerCodec(n int, signed, variable bool) Codec {
 				return nil
 			}
 		}
-		return storeInteger(b, x, w, signed)
+		if err := integerRange(x, w, signed); err != nil {
+			return err
+		}
+		return b.StoreBigInt(x, uint(w))
 	}
 	c.ReadStack = func(_ *Context, r *StackReader) (any, error) {
 		v, err := r.pop("int")
@@ -287,10 +273,6 @@ func RemainderCodec(stackType string) Codec {
 		if err != nil {
 			return nil, err
 		}
-		r, err = withCellLevels(r)
-		if err != nil {
-			return nil, err
-		}
 		if _, err = s.LoadSlice(s.BitsLeft()); err != nil {
 			return nil, err
 		}
@@ -306,7 +288,7 @@ func RemainderCodec(stackType string) Codec {
 		if err != nil {
 			return err
 		}
-		if r.ToRawUnsafe().IsSpecial {
+		if r.IsSpecial() {
 			return errors.New("exotic cell cannot be used as raw slice/builder data")
 		}
 		return b.StoreBuilder(r.ToBuilder())

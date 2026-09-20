@@ -62,7 +62,11 @@ func TestIntegerVectors(t *testing.T) {
 		t.Run(tc.value+tc.hex, func(t *testing.T) {
 			c := IntegerCodec(tc.n, tc.signed, tc.variable)
 			root := roundTrip(t, &c, tc.value)
-			data, err := root.BeginParse().LoadSlice(root.BitsSize())
+			s, err := root.BeginParse()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := s.LoadSlice(root.BitsSize())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -166,7 +170,11 @@ func TestStructRefsUnionAndStrictness(t *testing.T) {
 	if root.BitsSize() != 12 {
 		t.Fatal("explicit union prefix duplicated")
 	}
-	data, _ := root.BeginParse().LoadSlice(12)
+	head, err := root.BeginParse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := head.LoadSlice(12)
 	if hex.EncodeToString(data) != "a120" {
 		t.Fatalf("%x", data)
 	}
@@ -215,7 +223,10 @@ func TestArraysListsAndDictionaries(t *testing.T) {
 		values = append(values, "7")
 	}
 	root := roundTrip(t, &a, values)
-	s := root.BeginParse()
+	s, err := root.BeginParse()
+	if err != nil {
+		t.Fatal(err)
+	}
 	n, _ := s.LoadUInt(8)
 	head, _ := s.LoadMaybeRef()
 	if n != 255 {

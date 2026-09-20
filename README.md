@@ -13,7 +13,7 @@ This repo serves as:
 
 `github.com/ton-blockchain/tolk-abi-to-go` is a standalone **Go 1.26.3** module.
 Its root package, `tolkabi`, is a pure Go facade and shared codec library using
-**tonutils-go v1.15.5**. The `codegen` subpackage is a reusable build-time
+**tonutils-go v1.18.0**. The `codegen` subpackage is a reusable build-time
 compiler ABI validator and Go generator.
 Generated code calls native codec constructors once at initialization. It does
 not interpret a type table or parse compiler ABI JSON while handling requests.

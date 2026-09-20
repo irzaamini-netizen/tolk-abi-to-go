@@ -26,7 +26,10 @@ func MapCodec(key, value *Codec, keyBits int) Codec {
 				return err
 			}
 			defer ctx.leave()
-			s := root.BeginParse()
+			s, err := root.BeginParse()
+			if err != nil {
+				return err
+			}
 			if s.IsSpecial() {
 				return errors.New("exotic cell cannot be interpreted as a dictionary node")
 			}
@@ -171,11 +174,7 @@ func MapCodec(key, value *Codec, keyBits int) Codec {
 				return nil, err
 			}
 		}
-		root, err := d.ToCell()
-		if err != nil || root == nil {
-			return root, err
-		}
-		return withCellLevels(root)
+		return d.ToCell()
 	}
 	c := Codec{Width: 1}
 	c.Read = func(ctx *Context, s *cell.Slice) (any, error) {

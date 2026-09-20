@@ -1,2 +1,4 @@
-github.com/xssnick/tonutils-go v1.15.5 h1:yAcHnDaY5QW0aIQE47lT0PuDhhHYE+N+NyZssdPKR0s=
-github.com/xssnick/tonutils-go v1.15.5/go.mod h1:3/B8mS5IWLTd1xbGbFbzRem55oz/Q86HG884bVsTqZ8=
+github.com/pierrec/lz4/v4 v4.1.27 h1:+PhzhWDrjRj89TH2sw43nE3+4+W8lSxIuQadEHZyjUk=
+github.com/pierrec/lz4/v4 v4.1.27/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
+github.com/xssnick/tonutils-go v1.18.0 h1:VDH614303RfPQxO4e/GcfrtWbL3WanpHIfxlWVd0Ea0=
+github.com/xssnick/tonutils-go v1.18.0/go.mod h1:4z7dSfiufWiE2SnzgM0IYzlwpJ5UlHyPH45HP0QZNzQ=

@@ -110,7 +110,7 @@ func DecodeBOC(s string) (out *cell.Cell, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if out.ToRawUnsafe().IsSpecial {
+	if out.IsSpecial() {
 		return nil, errors.New("exotic cell cannot be decoded as an ordinary ABI root")
 	}
 	return out, nil
